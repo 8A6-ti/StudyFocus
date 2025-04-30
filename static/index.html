@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; img-src 'self' data:;">
+    <link href="./styles.css" rel="stylesheet">
+    <title>StudyFocus</title>
+  </head>
+  <body>
+    <!-- titlebar -->
+    <div class="titlebar">
+      <span>StudyFocus</span>
+      <button id="close-btn">❌</button>
+    </div>
+
+    <!-- index -->
+    <div id="index-view" class="main-container">
+      <div class="welcome">
+        <h1 id="title">Welcome to StudyFocus</h1>
+        <h2 id="desc">Start studying efficiently with smart time management</h2>
+        <button id="start-session">Start session</button>
+      </div>
+    </div>
+
+    <!-- obj -->
+    <div id="objectives-view" class="main-container" style="display:none;">
+      <div class="welcome">
+        <h1 id="title">Welcome to StudyFocus</h1>
+        <h2>What are your learning objectives today?</h2>
+      </div>
+      <div class="objective"></div>
+    </div>
+
+    <!-- time alloc options -->
+    <div id="timeallocation-view" class="main-container" style="display:none;">
+      <div class="welcome">
+        <h1 id="title">Time Allocation</h1>
+        <button id="allocate-breaks">Allocate time for studying and breaks</button>
+        <button id="allocate-objectives">Allocate time for each objective</button>
+      </div>
+    </div>
+
+    <!-- time alloc 1 general -->
+    <div id="timeallocation1-view" class="main-container" style="display:none;">
+      <div class="welcome">
+        <h1 id="title">Time Allocation</h1>
+        <h2 id="desc">Total studying time:</h2>
+        <div class="time-picker">
+          <select id="study-hour-picker"></select>h
+          <select id="study-minute-picker"></select>m
+        </div>
+        <h2 id="desc">Total rest time:</h2>
+        <div class="time-picker1">
+          <select id="rest-hour-picker"></select>h
+          <select id="rest-minute-picker"></select>m
+        </div>
+        <button id="confirm-time">Confirm</button>
+      </div>
+    </div>
+
+    <!-- app alloc -->
+    <div id="appallocation-view" class="main-container" style="display:none;">
+      <div class="welcome">
+        <h1 id="title">Applications Whitelist</h1>
+        <h2 id="desc1">Apps you can use in Study Mode</h2>
+        <button id="confirm-app">Confirm</button>
+      </div>
+    </div>
+
+    <script src="./index.js"></script>
+  </body>
+</html>

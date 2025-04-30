@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>StudyFocus UI</title>
+  <style>
+    @font-face {
+    font-family: 'PSBold';
+    src: url('productsansbold.otf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    }
+
+    * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-app-region: no-drag;
+    }
+
+    body {
+  margin: 0;
+  background: transparent;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.island {
+  position: absolute;
+  top: 20px; /* Adjust this to control how far from the top */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 30px;
+  background: rgb(30, 30, 30);
+  border-radius: 30px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-family: PSBold, sans-serif;
+  cursor: pointer;
+}
+
+.island:hover {
+  width: 300px;
+  background: rgb(50, 50, 50);
+}
+  </style>
+</head>
+<body>
+  <div class="island" id="island">
+    Placeholder
+  </div>
+</body>
+</html>
