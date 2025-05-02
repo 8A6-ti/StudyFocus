@@ -146,6 +146,17 @@ def save_apps():
     print("received saved apps:", saved_apps)
     return jsonify({"status": "success", "message": "apps saved"}), 200
 
+# send all saved data (objectives, time, apps)
+@app.route('/api/getdata/all', methods=['GET'])
+def get_all_data():
+    return jsonify({
+        "objectives": response_data,
+        "time": time_data,
+        "apps": saved_apps
+    }), 200
+
+# code needs cleaning up
+
 # run flask
 if __name__ == '__main__':
     print("StudyFocus System Controller\nby 8A6 ti team\n--")

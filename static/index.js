@@ -55,7 +55,8 @@ function showView(viewId) {
     'objectives-view',
     'timeallocation-view',
     'timeallocation1-view',
-    'appallocation-view'
+    'appallocation-view',
+    'summary-view'
   ];
   views.forEach(id => {
     document.getElementById(id).style.display = (id === viewId) ? 'block' : 'none';
@@ -460,9 +461,9 @@ function setupAppAllocationView() {
       const uniqueApps = Array.from(
         new Map(data.data.map(app => [app.process, app])).values()
       );
-
+      // app blacklist (windows)
       const blockedProcesses = ['explorer.exe', 'systemsettings.exe', 'textinputhost.exe'];
-      const blockedTitles = ['program manager', 'settings', 'windows input experience', 'studyfocus'];
+      const blockedTitles = ['nvidia', 'nvidia geforce overlay', 'program manager', 'settings', 'windows input experience', 'studyfocus'];
 
       const filteredApps = uniqueApps.filter(app => {
         const proc = app.process?.toLowerCase();
@@ -496,6 +497,17 @@ function setupAppAllocationView() {
     .then(res => res.json())
     .then(res => console.log('Apps saved:', res))
     .catch(err => console.error('Error saving apps:', err));
+    setTimeout(() => {
+      setupSummaryView();
+    }, 500);
+  });
+}
+
+function setupSummaryView() {
+  showView('summary-view');
+  const startsesh = document.getElementById('confirm-sesh');
+  startsesh.addEventListener('click', () => {
+    createDynIsland();
   });
 }
 
