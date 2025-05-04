@@ -1,11 +1,13 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const { exec } = require('child_process');
 const path = require('node:path');
+const axios = require('axios');
 const iconPath = path.join(__dirname, "build", "icon.png");
 
 let splashWindow;
 let mainWindow;
 let dynIsland;
+let notifOverlay;
 
 function createSplash() {
   splashWindow = new BrowserWindow({
@@ -16,6 +18,7 @@ function createSplash() {
     transparent: true,
     resizable: false,
     center: true,
+    hasShadow: false,
     show: true,
     titleBarStyle: 'hidden',
     icon: iconPath
@@ -45,7 +48,6 @@ function createMainWindow() {
   });
   ipcMain.on('maximize', () => {
     if (mainWindow) {
-      // mainWindow.maximize();
       mainWindow.setResizable(false);
       mainWindow.setBounds({ width: 1280, height: 720 }); 
       mainWindow.center();
@@ -53,43 +55,48 @@ function createMainWindow() {
   });
   ipcMain.on('unmaximize', () => {
     if (mainWindow) {
-      // mainWindow.unmaximize();
       mainWindow.setResizable(true);
       mainWindow.setBounds({ width: 800, height: 600 }); 
       mainWindow.center();
     }
   });
-  ipcMain.on('open-dynisland', () => {  // init new window for dynisland
+  ipcMain.on('open-dynisland', () => {
     if (mainWindow) {
       mainWindow.close();
       mainWindow = null;
     }
     createDynIsland();
   });
+  ipcMain.on('open-notification-overlay', () => {
+    createNotificationOverlay();
+  });
 }
 
-function createDynIsland() {  // fullscreen but clickthru
+function createDynIsland() {
   if (dynIsland) return;
 
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
-  const screenWidth = primaryDisplay.bounds.width;
 
   dynIsland = new BrowserWindow({
-    width: 600,
-    height: 40,
+    width: primaryDisplay.bounds.width,
+    height: 100,
+    x: 0,
+    y: 0,
     frame: false,
     alwaysOnTop: true,
     transparent: true,
     resizable: false,
-    skipTaskbar: true, // dont show on taskbar - uncomment on release
+    skipTaskbar: true,
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
     }
   });
+
   dynIsland.setIgnoreMouseEvents(true, { forward: true });
-  dynIsland.maximize();
+
   dynIsland.loadURL('http://localhost:5000/dynisland.html');
 
   dynIsland.on('closed', () => {
@@ -97,18 +104,68 @@ function createDynIsland() {  // fullscreen but clickthru
   });
 }
 
+function createNotificationOverlay() {
+  if (notifOverlay) return;
+
+  const { screen } = require('electron');
+  const display = screen.getPrimaryDisplay();
+  
+  // Create with initial size, will be resized after content loads
+  notifOverlay = new BrowserWindow({
+    width: 500,  // Match overlay-container width
+    height: 400, // Match initial height
+    x: display.bounds.width - 500, // Account for width + margin
+    y: display.bounds.height - 430, // Account for height + margin
+    frame: false,
+    alwaysOnTop: true,
+    transparent: true,
+    backgroundColor: "#00000000", // Fully transparent
+    resizable: false,
+    skipTaskbar: true,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false
+    }
+  });
+
+  notifOverlay.setIgnoreMouseEvents(false);
+  notifOverlay.loadURL('http://localhost:5000/notioverlay.html');
+
+  notifOverlay.on('closed', () => {
+    notifOverlay = null;
+  });
+
+  notifOverlay.webContents.once('did-finish-load', () => {
+    // // Get actual content size and resize window
+    // notifOverlay.webContents.executeJavaScript(`
+    //   document.querySelector('.overlay-container').getBoundingClientRect();
+    // `).then(rect => {
+    //   notifOverlay.setBounds({
+    //     width: Math.ceil(rect.width),
+    //     height: Math.ceil(rect.height),
+    //     x: display.bounds.width - Math.ceil(rect.width) - 20,
+    //     y: display.bounds.height - Math.ceil(rect.height) - 40
+    //   });
+    // });
+
+    // Fetch data and inject it
+    axios.get('http://localhost:5000/api/getdata/all')
+      .then(res => {
+        const data = res.data;
+        notifOverlay.webContents.executeJavaScript(`
+          if (window && typeof window.updateOverlayData === 'function') {
+            window.updateOverlayData(${JSON.stringify(data)});
+          }
+        `);
+      })
+      .catch(err => {
+        console.error("Failed to fetch overlay data:", err.message);
+      });
+  });
+}
+
 app.whenReady().then(() => {
   createSplash();
-
-  // uncomment on release - exec py or compiled exe
-
-  // exec('py main.py', (err, stdout, stderr) => {
-  //   if (err) {
-  //     console.error(`err: ${err.message}`);
-  //     return;
-  //   }
-  // });
-
 
   setTimeout(() => {
     createMainWindow();

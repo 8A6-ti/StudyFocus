@@ -507,12 +507,21 @@ function setupSummaryView() {
   showView('summary-view');
   const startsesh = document.getElementById('confirm-sesh');
   startsesh.addEventListener('click', () => {
-    createDynIsland();
+    // Start the session before creating overlay
+    fetch('http://localhost:5000/api/start-session', {
+      method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Session started:', data);
+      createDynIsland();
+    })
+    .catch(err => console.error('Failed to start session:', err));
   });
 }
 
 function createDynIsland() {
-  ipcRenderer.send('open-dynisland');
+  ipcRenderer.send('open-notification-overlay');
 }
 
 // page init
