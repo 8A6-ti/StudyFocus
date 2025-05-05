@@ -303,27 +303,24 @@ def monitor_active_apps():
         if current_app:
             active_window_info = current_app
             
-            # check if app is whitelisted
             if not is_app_whitelisted(current_app):
+                current_time = time.time()
+                
                 if not unallowed_app_warning_active:
-                    # unallowed app detected
+                    # First detection of unallowed app
                     unallowed_app_warning_active = True
-                    last_unallowed_time = time.time()
+                    last_unallowed_time = current_time
                     print(f"Unallowed app detected: {current_app['title']} ({current_app['process']})")
-                else:
-                    # is still in unallowed app
-                    elapsed_time = time.time() - last_unallowed_time
-                    if elapsed_time >= 5.0:  # 5 second threshold
-                        # deduct time from rest (maybe make this the actual time?)
-                        deduct_rest_time()
-                        # reset timer
-                        last_unallowed_time = time.time()
+                elif current_time - last_unallowed_time >= 5.0:
+                    # 5 seconds have passed in unallowed app
+                    deduct_rest_time()
+                    last_unallowed_time = current_time
             else:
-                # reset
+                # Reset when in whitelisted app
                 unallowed_app_warning_active = False
                 last_unallowed_time = None
-        
-        time.sleep(0.5)  # check 0.5 seconds
+                
+        time.sleep(0.5)
     
     print("App monitoring thread stopped")
 

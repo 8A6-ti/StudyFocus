@@ -1,0 +1,201 @@
+* {
+    -webkit-app-region: no-drag;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  
+  .overlay-container {
+    width: 300px;
+    background-color: rgba(20, 20, 20, 0.9);
+    border-radius: 16px;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+    color: white;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: height 0.3s ease, background-color 0.3s ease;
+    overflow: hidden;
+    height: 120px; /* Default height */
+  }
+  
+  .overlay-container:hover {
+    height: 400px;
+    background-color: rgba(40, 40, 40, 0.95);
+  }
+  
+  .line {
+    font-size: 14px;
+    margin: 4px 0;
+  }
+  
+  .buttons {
+    margin-top: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .button {
+    background-color: #444;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .button:hover {
+    background-color: #666;
+  }
+  
+  .extra-data {
+    font-size: 13px;
+    margin-top: 12px;
+    overflow-y: auto;
+    max-height: 200px;
+  }
+  
+  .extra-data h4 {
+    margin: 6px 0 2px;
+    color: #cccccc;
+  }
+  
+  .objectives-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 8px 0;
+  }
+  
+  .objective-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 6px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+  }
+  
+  .objective-item:hover {
+    background-color: rgba(70, 70, 70, 0.5);
+  }
+  
+  .objective-checkbox {
+    margin-right: 8px;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  }
+  
+  .objective-text {
+    flex-grow: 1;
+    font-size: 13px;
+  }
+  
+  .objective-timestamp {
+    font-size: 11px;
+    color: #aaa;
+    margin-left: 8px;
+  }
+  
+  .objective-completed {
+    text-decoration: line-through;
+    color: #8c8c8c;
+  }
+  
+  .objective-item.completed {
+    background-color: rgba(0, 100, 0, 0.3);
+  }
+  
+  .progress-bar {
+    height: 6px;
+    background-color: #333;
+    border-radius: 3px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease;
+  }
+  
+  .section-divider {
+    border-top: 1px solid #666;
+    margin: 10px 0;
+  }
+  
+  .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  
+  .status-active {
+    background-color: #4CAF50;
+  }
+  
+  .status-rest {
+    background-color: #FFA500;
+  }
+  
+  .status-warning {
+    background-color: #F44336;
+    animation: blink 1s infinite;
+  }
+  
+  @keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.3; }
+    100% { opacity: 1; }
+  }
+  
+  .allowed-apps {
+    margin-top: 10px;
+  }
+  
+  .allowed-apps h4 {
+    margin-bottom: 5px;
+  }
+  
+  .allowed-app {
+    font-size: 12px;
+    margin: 3px 0;
+    color: #7bff7b;
+  }
+  
+  .timer-display {
+    font-size: 22px;
+    font-weight: bold;
+    text-align: center;
+    margin: 5px 0;
+  }
+  
+  .warning-banner {
+    background-color: rgba(220, 53, 69, 0.8);
+    padding: 8px;
+    margin: 5px 0;
+    border-radius: 8px;
+    text-align: center;
+    display: none;
+    animation: pulse 1s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { background-color: rgba(220, 53, 69, 0.6); }
+    50% { background-color: rgba(220, 53, 69, 0.9); }
+    100% { background-color: rgba(220, 53, 69, 0.6); }
+  }
+  
+  .countdown {
+    font-weight: bold;
+    font-size: 18px;
+  }
