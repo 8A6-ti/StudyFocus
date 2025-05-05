@@ -110,18 +110,18 @@ function createNotificationOverlay() {
   const { screen } = require('electron');
   const display = screen.getPrimaryDisplay();
   
-  // Create with initial size, will be resized after content loads
   notifOverlay = new BrowserWindow({
-    width: 500,  // Match overlay-container width
-    height: 400, // Match initial height
-    x: display.bounds.width - 500, // Account for width + margin
-    y: display.bounds.height - 430, // Account for height + margin
+    width: 325,  
+    height: 600, 
+    x: display.bounds.width - 330,
+    y: 5, 
     frame: false,
     alwaysOnTop: true,
     transparent: true,
-    backgroundColor: "#00000000", // Fully transparent
+    backgroundColor: "#00000000", 
     resizable: false,
     skipTaskbar: true,
+    hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false

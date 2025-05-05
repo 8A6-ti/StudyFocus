@@ -387,9 +387,16 @@
     function switchMode() {
       isStudyMode = !isStudyMode;
       
+      // Stop existing timer
+      stopTimer();
+      
       // Update UI
       updateStatusIndicator();
       updateTimerDisplay();
+      updateProgressBar();
+      
+      // Start new timer
+      startTimer();
       
       // Update button text
       const modeButton = document.getElementById('modeButton');
@@ -466,6 +473,55 @@
       }
     }
     
+    // Helper function to parse time string (MM:SS) to seconds
+    function parse_time_to_seconds(timeStr) {
+      const [minutes, seconds] = timeStr.split(':').map(Number);
+      return (minutes * 60) + seconds;
+    }
+    
+    // Format seconds to time string (MM:SS)
+    function formatSecondsToTime(seconds) {
+      const minutes = Math.floor(Math.max(0, seconds) / 60);
+      const remainingSeconds = Math.max(0, seconds) % 60;
+      return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+    }
+    
+    // Calculate progress based on time left
+    function calculateTimeProgress() {
+      // Get the total study time in seconds
+      const studyTimeStr = isStudyMode ? timeData.time : timeData.restTime;
+      const totalSeconds = parse_time_to_seconds(studyTimeStr);
+      
+      // Get the initial total time (from the beginning values)
+      const initialStudyTime = parse_time_to_seconds("25:00"); // Default study time
+      const initialRestTime = parse_time_to_seconds("5:00");   // Default rest time
+      
+      // Calculate the progress percentage based on time remaining
+      let initialTime = isStudyMode ? initialStudyTime : initialRestTime;
+      let percentage = (totalSeconds / initialTime) * 100;
+      
+      // Ensure the percentage is within 0-100 range
+      percentage = Math.max(0, Math.min(100, percentage));
+      
+      return percentage;
+    }
+    
+    // Update the progress bar based on calculated progress
+    function updateProgressBar() {
+      const progressPercentage = calculateTimeProgress();
+      const progressFill = document.getElementById('progressFill');
+      progressFill.style.width = `${progressPercentage}%`;
+      
+      // Change color based on progress (green to red as time decreases)
+      if (progressPercentage > 66) {
+        progressFill.style.backgroundColor = "#4CAF50"; // Green
+      } else if (progressPercentage > 33) {
+        progressFill.style.backgroundColor = "#FFA500"; // Orange
+      } else {
+        progressFill.style.backgroundColor = "#F44336"; // Red
+      }
+    }
+    
     // takes away rest time when caught using wrong apps
     function deductFromRestTime() {
       // Call backend to deduct time from rest
@@ -474,14 +530,41 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deductSeconds: 30 }) // Deduct 30 seconds as penalty
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.time) {
           timeData = data.time;
           updateTimerDisplay();
+          updateProgressBar(); // Update progress bar after time deduction
+          
+          // If rest time is zero, force switch to study mode
+          if (timeData.restTime === "00:00" && !isStudyMode) {
+            switchMode(); // Auto-switch to study mode
+          }
         }
       })
-      .catch(err => console.error('Failed to deduct rest time:', err));
+      .catch(err => {
+        console.error('Failed to deduct rest time:', err);
+        // Fallback: update UI manually if backend call fails
+        if (timeData && timeData.restTime) {
+          const restSeconds = parse_time_to_seconds(timeData.restTime);
+          if (restSeconds > 30) {
+            timeData.restTime = formatSecondsToTime(restSeconds - 30);
+          } else {
+            timeData.restTime = "00:00";
+            if (!isStudyMode) {
+              switchMode(); // Auto-switch to study mode
+            }
+          }
+          updateTimerDisplay();
+          updateProgressBar();
+        }
+      });
       
       // Reset countdown for next time
       stopAppDetectionCountdown();
@@ -489,34 +572,52 @@
     
     // makes sure current app is ok to use
     function checkCurrentApp(currentAppData) {
-      // This function would be called with the current active app info
-      // For demo purposes, we'll simulate this with random detection
+      // No app data provided
+      if (!currentAppData || !currentAppData.process) {
+        stopAppDetectionCountdown(); // No active app data, so stop any warnings
+        return;
+      }
+      
+      // Check if the app is in the allowed list
       const isAllowed = allowedApps.some(app => 
-        app.process === currentAppData.process || app.title === currentAppData.title
+        (app.process && currentAppData.process && app.process.toLowerCase() === currentAppData.process.toLowerCase()) || 
+        (app.title && currentAppData.title && currentAppData.title.toLowerCase().includes(app.title.toLowerCase()))
       );
       
-      if (!isAllowed) {
-        startAppDetectionCountdown();
-      } else {
+      // Check if it's a system process (these should always be allowed)
+      const systemProcesses = [
+        "explorer.exe", "SearchUI.exe", "SearchApp.exe", "StartMenuExperienceHost.exe",
+        "ShellExperienceHost.exe", "Taskmgr.exe", "SystemSettings.exe", "RuntimeBroker.exe",
+        "svchost.exe", "dllhost.exe", "electron.exe"
+      ];
+      
+      const isSystemProcess = systemProcesses.includes(currentAppData.process);
+      
+      // Check if the window title contains StudyFocus (our own app)
+      const isStudyFocusApp = currentAppData.title && currentAppData.title.includes("StudyFocus");
+      
+      // If the app is allowed, is a system process, or is our own app, it's allowed
+      if (isAllowed || isSystemProcess || isStudyFocusApp) {
         stopAppDetectionCountdown();
+      } else {
+        startAppDetectionCountdown();
       }
     }
 
-    // lets the backend update our ui
+    // lets the backend update our ui - comprehensive update function
     window.updateOverlayData = function(data) {
+      // Update timer display
       if (data && data.time) {
         timeData = data.time;
         updateTimerDisplay();
       }
-  
+    
+      // grab the new objectives if we got em
       if (data && data.objectives && Array.isArray(data.objectives.obj)) {
-        // Transform array of strings into array of objective objects if needed
         objectives = data.objectives.obj.map((obj, index) => {
-          // If already an object with completion status, use it
           if (typeof obj === 'object' && obj !== null) {
             return obj;
           }
-          // Otherwise, create an object from the string
           return {
             text: obj,
             completed: false
@@ -525,20 +626,39 @@
         renderObjectives();
       }
       
+      // keep the allowed apps list fresh
       if (data && data.apps) {
         allowedApps = data.apps;
         renderAllowedApps();
       }
       
-      // Update progress bar based on time left
-      if (data && data.progress !== undefined) {
-        currentProgress = data.progress;
-        document.getElementById('progressFill').style.width = `${currentProgress}%`;
+      // flip the mode switch if needed
+      if (data && data.mode) {
+        isStudyMode = data.mode === "study";
+        updateStatusIndicator();
+        const modeButton = document.getElementById('modeButton');
+        if (modeButton) {
+          modeButton.textContent = isStudyMode ? 'Switch to Rest' : 'Switch to Study';
+        }
       }
       
-      // Check if current app is whitelisted
+      // deal with the progress bar
+      if (data && data.progress !== undefined) {
+        currentProgress = data.progress;
+      } else {
+        // no progress from backend? calculate it ourselves
+        currentProgress = calculateTimeProgress();
+      }
+      updateProgressBar();
+      
+      // make sure they're using an ok app
       if (data && data.currentApp) {
         checkCurrentApp(data.currentApp);
+      }
+      
+      // If there's an unallowed app warning active from the backend, show the warning
+      if (data && data.unallowedAppWarning) {
+        startAppDetectionCountdown();
       }
     };
     
@@ -563,6 +683,6 @@
           console.error("dang, refresh failed:", error.message);
         });
     }, REFRESH_INTERVAL);
-  </script>  
+  </script>
 </body>
 </html>

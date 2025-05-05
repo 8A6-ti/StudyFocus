@@ -50,6 +50,7 @@ unallowed_app_warning_active = False
 whitelisted_apps = []  # whitelisted apps to be saved (process name or title)
 app_monitor_thread = None
 app_monitor_running = False
+session_timer_thread = None
 
 # system processes to ignore
 SYSTEM_PROCESSES = [
@@ -511,23 +512,52 @@ def get_all_data():
 @app.route('/api/start-session', methods=['POST'])
 def start_session():
     global session_active, session_start_time, session_mode, session_paused
-    
+
     session_active = True
-    session_start_time = time.time()
+    session_start_time = time.time()  # Initialize timer
     session_mode = "study"
     session_paused = False
-    
+
     # Start app monitoring
     start_app_monitoring()
-    
+
+    # Show native Windows toast notification
     toast.show_toast(
         "StudyFocus",
         "Study session started!",
-        duration = 3,
-        threaded = True,
+        duration=3,
+        threaded=True,
     )
-    
-    return jsonify({"status": "success", "message": "Session started"}), 200
+
+    return jsonify({
+        "status": "success",
+        "message": "Session started",
+    }), 200
+
+def session_timer():
+    global session_active, time_data, session_mode, session_start_time
+
+    print("Session timer started")
+    while session_active and time_data:
+        time.sleep(1)
+
+        if session_paused:
+            continue
+
+        key = 'time' if session_mode == 'study' else 'restTime'
+        seconds = parse_time_to_seconds(time_data.get(key, '00:00'))
+
+        if seconds > 0:
+            seconds -= 1
+        else:
+            print(f"{session_mode.capitalize()} time is up!")
+            # switch to other mode when time up (func to be added later)
+            continue
+
+        time_data[key] = format_seconds_to_time(seconds)
+
+    print("Session timer ended")
+
 
 # tick-objective endpoint (for overlay)
 @app.route('/api/tick-objective', methods=['POST'])
