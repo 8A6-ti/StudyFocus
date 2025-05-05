@@ -60,47 +60,12 @@ function createMainWindow() {
       mainWindow.center();
     }
   });
-  ipcMain.on('open-dynisland', () => {
+  ipcMain.on('open-notification-overlay', () => {
     if (mainWindow) {
       mainWindow.close();
       mainWindow = null;
     }
-    createDynIsland();
-  });
-  ipcMain.on('open-notification-overlay', () => {
     createNotificationOverlay();
-  });
-}
-
-function createDynIsland() {
-  if (dynIsland) return;
-
-  const { screen } = require('electron');
-  const primaryDisplay = screen.getPrimaryDisplay();
-
-  dynIsland = new BrowserWindow({
-    width: primaryDisplay.bounds.width,
-    height: 100,
-    x: 0,
-    y: 0,
-    frame: false,
-    alwaysOnTop: true,
-    transparent: true,
-    resizable: false,
-    skipTaskbar: true,
-    hasShadow: false,
-    webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
-    }
-  });
-
-  dynIsland.setIgnoreMouseEvents(true, { forward: true });
-
-  dynIsland.loadURL('http://localhost:5000/dynisland.html');
-
-  dynIsland.on('closed', () => {
-    dynIsland = null;
   });
 }
 
@@ -120,7 +85,7 @@ function createNotificationOverlay() {
     transparent: true,
     backgroundColor: "#00000000", 
     resizable: false,
-    skipTaskbar: true,
+    // skipTaskbar: true,
     hasShadow: false,
     webPreferences: {
       nodeIntegration: true,
