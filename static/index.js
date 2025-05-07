@@ -516,7 +516,37 @@ function setupAppAllocationView() {
 
 function setupSummaryView() {
   showView('summary-view');
+  const desc1 = document.querySelector('#summary-view #desc1');
   const startsesh = document.getElementById('confirm-sesh');
+
+  // fetch and display summary
+  fetch('http://localhost:5000/api/getdata/all')
+    .then(response => response.json())
+    .then(data => {
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.marginTop = '20px';
+      summaryDiv.style.fontFamily = 'PS, sans-serif';
+      summaryDiv.style.fontSize = '14px';
+      
+      // format time
+      const studyTime = data.time?.time || 0;
+      const restTime = data.time?.restTime || 0;
+      const hours = Math.floor(studyTime / 3600);
+      const minutes = Math.floor((studyTime % 3600) / 60);
+      
+      // create summary text
+      summaryDiv.innerHTML = `
+        <p>Total study time: ${Math.floor(studyTime / 60)}m</p>
+        <p>Total rest time: ${Math.floor(restTime / 60)}m</p>
+        <p>Number of objectives: ${data.objectives?.obj?.length || 0}</p>
+        <p>Whitelisted apps: ${data.apps?.length || 0}</p>
+      `;
+
+      // ins
+      desc1.insertAdjacentElement('afterend', summaryDiv);
+    })
+    .catch(err => console.error('Failed to fetch summary data:', err));
+
   startsesh.addEventListener('click', () => {
     // Start the session before creating overlay
     fetch('http://localhost:5000/api/start-session', {
