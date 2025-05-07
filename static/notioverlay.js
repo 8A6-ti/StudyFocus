@@ -311,12 +311,16 @@ function updateProgressBar() {
   
   if (currentProgress > 66) {
     progressFill.style.backgroundColor = "#4CAF50"; 
-  } else if (currentProgress > 33) {
-    progressFill.style.backgroundColor = "#FFA500";
   } else {
-    progressFill.style.backgroundColor = "#F44336";
-    if (isStudyMode && currentProgress == 0) {
-      endSession();
+    if (isStudyMode && currentProgress == 100) {
+      fetch('http://localhost:5000/api/end-session', { 
+        method: 'POST' 
+      }).then(() => {
+        // Close the overlay window
+        if (window.electron) {
+          window.electron.closeWindow();
+        }
+      }).catch(err => console.error('Failed to end session:', err));
     }
   }
 }

@@ -398,20 +398,30 @@ def deduct_rest_time(seconds_to_deduct=30):
         current_rest_time = 0
         session_mode = "study"
         toast.show_toast(
-            "StudyFocus Warning",
-            "You have no rest time left! Switching to study mode.",
+            "StudyFocus Warning", 
+            f"Using unallowed app - {seconds_to_deduct} seconds added to study time!",
             duration = 3,
             threaded = True,
         )
+        initial_study_time + seconds_to_deduct
     
     print(f"time debug - Rest time after deduction: {current_rest_time}s (initial: {initial_rest_time}s)")
     
-    toast.show_toast(
-        "StudyFocus Warning", 
-        f"Using unallowed app - {seconds_to_deduct} seconds deducted from rest time!",
-        duration = 3,
-        threaded = True,
-    )
+    if current_rest_time < 0:
+        toast.show_toast(
+            "StudyFocus Warning", 
+            f"Using unallowed app - {seconds_to_deduct} seconds added to study time!",
+            duration = 3,
+            threaded = True,
+        )
+        initial_study_time + seconds_to_deduct
+    else:
+        toast.show_toast(
+            "StudyFocus Warning", 
+            f"Using unallowed app - {seconds_to_deduct} seconds deducted from rest time!",
+            duration = 3,
+            threaded = True,
+        )
     
     return {
         'time': current_study_time,
@@ -535,13 +545,13 @@ def calculate_progress():
     if initial_time == 0:
         return 100
         
-    # calculate progress in
-    progress = (initial_time / remaining) * 100
+    # calculate progress as percent complete (elapsed/total)
+    progress = ((initial_time - remaining) / initial_time) * 100
     
     # ensure progress stays within 0-100 range
     progress = max(0, min(100, progress))
     
-    print(f"time debug - Progress calculation: {progress:.1f}% ({remaining}/{initial_time} seconds)")
+    print(f"time debug - Progress calculation: {progress:.1f}% ({initial_time - remaining}/{initial_time} seconds)")
     
     return progress
 
