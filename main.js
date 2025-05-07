@@ -1,5 +1,6 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const { exec } = require('child_process');
+const os = require('node:os');
 const path = require('node:path');
 const axios = require('axios');
 const iconPath = path.join(__dirname, "build", "icon.png");
@@ -77,7 +78,7 @@ function createNotificationOverlay() {
   
   notifOverlay = new BrowserWindow({
     width: 325,  
-    height: 600, 
+    height: 145, 
     x: display.bounds.width - 330,
     y: 5, 
     frame: false,
@@ -90,7 +91,8 @@ function createNotificationOverlay() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
-    }
+    },
+    icon: iconPath
   });
 
   notifOverlay.setIgnoreMouseEvents(false);
@@ -100,8 +102,20 @@ function createNotificationOverlay() {
     notifOverlay = null;
   });
 
+  ipcMain.on('hover-notif-overlay', () => {
+    notifOverlay.setBounds({ width: 325, height: 425 });
+  });
+
+  ipcMain.on('notif-overlay', () => {
+    notifOverlay.setBounds({ width: 325, height: 145 });
+  });
+
+  ipcMain.on('warn-notif-overlay', () => {
+    notifOverlay.setBounds({ width: 325, height: 200 });
+  });
+
   notifOverlay.webContents.once('did-finish-load', () => {
-    // // Get actual content size and resize window
+    // // get actual content size and resize window
     // notifOverlay.webContents.executeJavaScript(`
     //   document.querySelector('.overlay-container').getBoundingClientRect();
     // `).then(rect => {
@@ -114,6 +128,7 @@ function createNotificationOverlay() {
     // });
 
     // Fetch data and inject it
+    // what is this for i forgot lol
     axios.get('http://localhost:5000/api/getdata/all')
       .then(res => {
         const data = res.data;
@@ -131,6 +146,17 @@ function createNotificationOverlay() {
 
 app.whenReady().then(() => {
   createSplash();
+  // python file exec
+  // make later since no embedded python in the app
+  // also remember to join path to file
+  // exec('python path/to/python/file.py', (error, stdout, stderr) => {
+
+  // console.log(os.platform() + os.release() + os.version() + os.machine());
+  // check if system is windows
+  if (os.platform() !== "win32") {
+    dialog.showErrorBox("Unsupported OS", "StudyFocus is only supported on Windows.");
+    app.quit();
+  }
 
   setTimeout(() => {
     createMainWindow();

@@ -19,7 +19,7 @@ import json
 import threading
 
 # config
-DEV_MODE = True # false on release
+DEV_MODE = False # false on release
 PORT = 5000  
 
 # info box
@@ -39,7 +39,7 @@ if DEV_MODE == False:
 response_data = None
 time_data = None
 session_active = False
-session_mode = "study"  # "study" or "rest"
+session_mode = "study"  # "study" or "rest" only - dung nghich nhe =)
 session_paused = False
 session_start_time = None
 current_time_left = None
@@ -51,6 +51,22 @@ whitelisted_apps = []  # whitelisted apps to be saved (process name or title)
 app_monitor_thread = None
 app_monitor_running = False
 session_timer_thread = None
+
+# new global vars
+session_start_timestamp = None
+initial_study_time = None
+initial_rest_time = None
+current_study_time = None
+current_rest_time = None
+study_elapsed_time = 0
+rest_elapsed_time = 0
+
+# VERY IMPORTANT: time update thing
+# used to calc elapsed time
+# must be in sync with overlay
+# nen la dung nghich 
+last_time_update = None
+TIME_UPDATE_INTERVAL = 10  # seconds
 
 # system processes to ignore
 SYSTEM_PROCESSES = [
@@ -64,7 +80,6 @@ SYSTEM_PROCESSES = [
     "RuntimeBroker.exe", # Runtime Broker
     "svchost.exe",      # Service Host 
     "dllhost.exe",      # COM Surrogate
-    "electron.exe",    # studyfocus app
 ]
 
 # parse time to seconds (MM:SS)
@@ -97,7 +112,7 @@ def receive_data():
     data = request.get_json()
     response_data = data
     
-    # Transform objectives into objects with completion status
+    # transform objectives into objects with completion status
     if data and 'obj' in data and isinstance(data['obj'], list):
         objectives_data = {
             'obj': [{'text': obj, 'completed': False} for obj in data['obj']]
@@ -131,12 +146,12 @@ def update_objective():
     elif 'completedAt' in objectives_data['obj'][index]:
         del objectives_data['obj'][index]['completedAt']
     
-    # Log the objective completion
+    # log the objective completion
     objective_text = objectives_data['obj'][index]['text']
     status = "completed" if data.get('completed', False) else "uncompleted"
     print(f"Objective '{objective_text}' marked as {status}")
     
-    # Show notification
+    # let usr know what happened
     if data.get('completed', False):
         toast.show_toast(
             "StudyFocus",
@@ -147,68 +162,96 @@ def update_objective():
     
     return jsonify({"status": "success", "message": "Objective updated"}), 200
 
-# switch modes
+# switches between study n rest
 @app.route('/api/switch-mode', methods=['POST'])
 def switch_mode():
-    global session_mode
+    global session_mode, session_start_timestamp
+    global current_study_time, current_rest_time
+    global study_elapsed_time, rest_elapsed_time
+    global last_time_update
+    
     data = request.get_json()
     
     if data and 'mode' in data:
+        # save the time we got left before switching
+        remaining = get_current_time_remaining()
+        if session_mode == "study":
+            current_study_time = remaining or current_study_time
+        else:
+            current_rest_time = remaining or current_rest_time
+            
+        # flip the mode
         session_mode = data['mode']
-        print(f"Session mode switched to: {session_mode}")
+        
+        # Reset timer for new mode
+        session_start_timestamp = time.time()
+        
+        # set initial time for new mode based on stored time
+        if session_mode == "study":
+            initial_study_time = current_study_time
+        else:
+            initial_rest_time = current_rest_time
+            
+        print(f"time debug - Switched to {session_mode} mode with {get_current_time_remaining()} seconds remaining")
         
         toast.show_toast(
             "StudyFocus",
             f"Switched to {session_mode.capitalize()} Mode",
-            duration = 3,
+            duration = 5,
             threaded = True,
         )
         
-        return jsonify({"status": "success", "message": f"Mode changed to {session_mode}"}), 200
+        # Reset last update time when switching modes
+        last_time_update = time.time()
+        
+        return jsonify({
+            "status": "success", 
+            "message": f"Mode changed to {session_mode}",
+            "remainingTime": get_current_time_remaining()
+        }), 200
     
     return jsonify({"status": "error", "message": "Invalid mode data"}), 400
 
-# end session
 @app.route('/api/end-session', methods=['POST'])
 def end_session():
-    global session_active, session_start_time, app_monitor_running
+    global session_active, app_monitor_running, session_start_timestamp
+    
+    # get final time update
+    update_elapsed_times()
     
     # stop app monitoring
     app_monitor_running = False
     if app_monitor_thread:
         app_monitor_thread.join(timeout=1.0)
     
-    # calc total time
-    total_time = 0
-    if session_start_time:
-        total_time = int(time.time() - session_start_time)
-        hours, remainder = divmod(total_time, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        time_str = f"{hours}h {minutes}m {seconds}s"
-    else:
-        time_str = "Unknown"
+    # calc total time from both modes
+    total_time = int(study_elapsed_time + rest_elapsed_time)
+    hours, remainder = divmod(total_time, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    time_str = f"{hours}h {minutes}m {seconds}s"
     
-    # calc completed objectives
+    # Calc completed objectives
     completed_objectives = 0
     if objectives_data and 'obj' in objectives_data:
         completed_objectives = sum(1 for obj in objectives_data['obj'] if obj.get('completed', False))
     
     session_active = False
     
-    # win10 toast notification
     toast.show_toast(
         "StudyFocus Session Ended",
-        f"Total time: {time_str}\nObjectives completed: {completed_objectives}",
+        f"Total time: {time_str}\nTime studied: {int(study_elapsed_time)}s\nTime rested: {int(rest_elapsed_time)}s\nObjectives completed: {completed_objectives}",
         duration = 5,
         threaded = True,
     )
     
-    # save to json (upload later?)
+    # Save stats
     try:
         session_stats = {
             "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "duration": total_time,
             "duration_str": time_str,
+            "study_time": int(study_elapsed_time),
+            "rest_time": int(rest_elapsed_time), 
             "objectives_total": len(objectives_data['obj']) if objectives_data and 'obj' in objectives_data else 0,
             "objectives_completed": completed_objectives,
             "objectives_details": objectives_data['obj'] if objectives_data and 'obj' in objectives_data else []
@@ -228,10 +271,12 @@ def end_session():
         print(f"Failed to save session statistics: {e}")
     
     return jsonify({
-        "status": "success", 
-        "message": "Session ended",
+        "status": "success",
+        "message": "Session ended", 
         "stats": {
             "time": time_str,
+            "study_time": int(study_elapsed_time),
+            "rest_time": int(rest_elapsed_time),
             "completed_objectives": completed_objectives
         }
     }), 200
@@ -269,25 +314,26 @@ def get_active_window_info():
 # check if app is whitelisted
 def is_app_whitelisted(app_info):
     if not app_info:
-        return True  # default to true atm if no app info
+        return True
     
     # ign system processes
     if app_info['process'] in SYSTEM_PROCESSES:
         return True
     
-    # check if app is whitelisted
-    for whitelisted_app in whitelisted_apps:
-        # proc name match
-        if 'process' in whitelisted_app and app_info['process'] and whitelisted_app['process'].lower() == app_info['process'].lower():
-            return True
-        
-        # window title match or partial match
-        if 'title' in whitelisted_app and app_info['title'] and whitelisted_app['title'].lower() in app_info['title'].lower():
-            return True
-    
     # StudyFocus app window should always be allowed
     if app_info['title'] and "StudyFocus" in app_info['title']:
         return True
+        
+    # check each whitelisted app
+    for whitelisted_app in whitelisted_apps:
+        # match either process name or window title
+        if ('process' in whitelisted_app and app_info['process'] and 
+            whitelisted_app['process'].lower() == app_info['process'].lower()):
+            return True
+            
+        if ('title' in whitelisted_app and app_info['title'] and 
+            whitelisted_app['title'].lower() in app_info['title'].lower()):
+            return True
     
     return False
 
@@ -310,11 +356,11 @@ def monitor_active_apps():
                     # First detection of unallowed app
                     unallowed_app_warning_active = True
                     last_unallowed_time = current_time
-                    print(f"Unallowed app detected: {current_app['title']} ({current_app['process']})")
-                elif current_time - last_unallowed_time >= 5.0:
-                    # 5 seconds have passed in unallowed app
-                    deduct_rest_time()
-                    last_unallowed_time = current_time
+                    print(f"App detected: {current_app['title']} ({current_app['process']})")
+                # elif current_time - last_unallowed_time >= 5.0:
+                #     # 5 seconds have passed in unallowed app
+                #     deduct_rest_time()
+                #     last_unallowed_time = current_time
             else:
                 # Reset when in whitelisted app
                 unallowed_app_warning_active = False
@@ -334,45 +380,42 @@ def start_app_monitoring():
 
 # deduct rest time (30 seconds by default)
 def deduct_rest_time(seconds_to_deduct=30):
-    global time_data, session_mode
+    global current_rest_time, initial_rest_time, session_mode
     
-    if not time_data:
+    if current_rest_time is None:
         return
     
-    # win10 toast notification
+    print(f"time debug - Deducting {seconds_to_deduct}s from rest time (current: {current_rest_time}s)")
+    
+    # update initial rest time instead of elapsed time (quick fix, its not perfect)
+    if session_mode == "study":
+        if initial_rest_time > seconds_to_deduct:
+            initial_rest_time -= seconds_to_deduct
+            current_rest_time = max(0, initial_rest_time - rest_elapsed_time)
+    else:
+        # if rest time is 0 swithc mode
+        initial_rest_time = 0
+        current_rest_time = 0
+        session_mode = "study"
+        toast.show_toast(
+            "StudyFocus Warning",
+            "You have no rest time left! Switching to study mode.",
+            duration = 3,
+            threaded = True,
+        )
+    
+    print(f"time debug - Rest time after deduction: {current_rest_time}s (initial: {initial_rest_time}s)")
+    
     toast.show_toast(
-        "StudyFocus Warning",
+        "StudyFocus Warning", 
         f"Using unallowed app - {seconds_to_deduct} seconds deducted from rest time!",
         duration = 3,
         threaded = True,
     )
     
-    print(f"Deducting {seconds_to_deduct} seconds from rest time")
-    
-    # convert time to seconds
-    rest_seconds = parse_time_to_seconds(time_data.get('restTime', '5:00'))
-    
-    # deduct time
-    if rest_seconds > seconds_to_deduct:
-        rest_seconds -= seconds_to_deduct
-    else:
-        # if rest time is less than 0, set to 0
-        rest_seconds = 0
-        toast.show_toast(
-            "StudyFocus Warning",
-            f"You have no rest time left!",
-            duration = 3,
-            threaded = True,
-        )
-        # switch to study mode
-        session_mode = "study"
-    
-    # update time data
-    time_data['restTime'] = format_seconds_to_time(rest_seconds)
-    
     return {
-        'time': time_data.get('time', '25:00'),
-        'restTime': time_data['restTime']
+        'time': current_study_time,
+        'restTime': current_rest_time
     }
 
 # API endpoint for deducting rest time
@@ -477,17 +520,43 @@ def save_apps():
 
 # Calculate and add progress percentage
 def calculate_progress():
-    # Placeholder for actual time calculation logic
-    if not time_data:
+    global session_mode, initial_study_time, initial_rest_time
+    
+    if not time_data or not session_active:
+        return 0
+        
+    remaining = get_current_time_remaining()
+    if remaining is None:
+        return 0
+        
+    # Get initial time based on current mode
+    initial_time = initial_study_time if session_mode == "study" else initial_rest_time
+    
+    if initial_time == 0:
         return 100
-    # reuturn random percentage for now
-    # calculate actual progress based on time_data later
-    import random
-    return random.randint(0, 100)
+        
+    # calculate progress in
+    progress = (initial_time / remaining) * 100
+    
+    # ensure progress stays within 0-100 range
+    progress = max(0, min(100, progress))
+    
+    print(f"time debug - Progress calculation: {progress:.1f}% ({remaining}/{initial_time} seconds)")
+    
+    return progress
 
 # send all saved data (objectives, time, apps)
 @app.route('/api/getdata/all', methods=['GET'])
 def get_all_data():
+    remaining_time = get_current_time_remaining()
+    
+    if time_data and remaining_time is not None:
+        # Update time_data with current remains
+        if session_mode == "study":
+            time_data['time'] = remaining_time
+        else:
+            time_data['restTime'] = remaining_time
+    
     # calculate progress percentage
     progress = calculate_progress()
     
@@ -505,20 +574,80 @@ def get_all_data():
         "unallowedAppWarning": unallowed_app_warning_active
     }), 200
 
-# start session
+# new helper function:
+def update_elapsed_times():
+    global last_time_update, session_start_timestamp
+    global study_elapsed_time, rest_elapsed_time, session_mode
+    
+    current_time = time.time()
+    
+    # Only update if enough time has passed
+    if last_time_update and (current_time - last_time_update) < TIME_UPDATE_INTERVAL:
+        return
+        
+    # calc elapsed time since last update
+    delta = current_time - (last_time_update or session_start_timestamp)
+    last_time_update = current_time
+    
+    # + elapsed time to appropriate mode
+    if session_mode == "study":
+        study_elapsed_time += delta
+    else:
+        rest_elapsed_time += delta
+        
+    print(f"time debug - Time update: +{delta:.1f}s to {session_mode} mode")
+    print(f"time debug - Total elapsed - Study: {study_elapsed_time:.1f}s, Rest: {rest_elapsed_time:.1f}s")
+
+def get_current_time_remaining():
+    global session_start_timestamp, initial_study_time, initial_rest_time
+    global current_study_time, current_rest_time, session_mode
+    global study_elapsed_time, rest_elapsed_time
+    
+    if not session_active or session_start_timestamp is None:
+        return None
+    
+    update_elapsed_times()
+    
+    # calc remaining time based on total elapsed
+    if session_mode == "study":
+        remaining = max(0, initial_study_time - study_elapsed_time)
+        current_study_time = remaining
+        print(f"time debug - Total study time elapsed: {study_elapsed_time}s, remaining: {remaining}s")
+    else:
+        remaining = max(0, initial_rest_time - rest_elapsed_time)
+        current_rest_time = remaining
+        print(f"time debug - Total rest time elapsed: {rest_elapsed_time}s, remaining: {remaining}s")
+        
+    return remaining
+
 @app.route('/api/start-session', methods=['POST'])
 def start_session():
-    global session_active, session_start_time, session_mode, session_paused
+    global session_active, session_start_timestamp, session_mode, session_paused
+    global initial_study_time, initial_rest_time, current_study_time, current_rest_time
+    global last_time_update
+
+    if not time_data:
+        return jsonify({"status": "error", "message": "No time data available"}), 400
+
+    # parse init time
+    initial_study_time = int(time_data.get('time', 0))
+    initial_rest_time = int(time_data.get('restTime', 0))
+    current_study_time = initial_study_time
+    current_rest_time = initial_rest_time
+    
+    print(f"time debug - Starting session with study time: {initial_study_time}s, rest time: {initial_rest_time}s")
 
     session_active = True
-    session_start_time = time.time()  # Initialize timer
+    session_start_timestamp = time.time()
     session_mode = "study"
     session_paused = False
 
     # Start app monitoring
     start_app_monitoring()
 
-    # Show native Windows toast notification
+    # Reset last update time when starting session
+    last_time_update = session_start_timestamp
+
     toast.show_toast(
         "StudyFocus",
         "Study session started!",
@@ -532,29 +661,27 @@ def start_session():
     }), 200
 
 def session_timer():
-    global session_active, time_data, session_mode, session_start_time
-
-    print("Session timer started")
-    while session_active and time_data:
+    global session_active, time_data, session_mode, session_start_timestamp
+    
+    print("time debug - Session timer thread started")
+    
+    while session_active:
+        if not session_paused:
+            remaining = get_current_time_remaining()
+            
+            if remaining is not None and remaining <= 0:
+                print(f"time debug - Time is up for {session_mode} mode!")
+                if session_mode == "study":
+                    toast.show_toast(
+                        "StudyFocus",
+                        "Your study session is over!",
+                        duration=3,
+                        threaded=True,
+                    )
+            
         time.sleep(1)
-
-        if session_paused:
-            continue
-
-        key = 'time' if session_mode == 'study' else 'restTime'
-        seconds = parse_time_to_seconds(time_data.get(key, '00:00'))
-
-        if seconds > 0:
-            seconds -= 1
-        else:
-            print(f"{session_mode.capitalize()} time is up!")
-            # switch to other mode when time up (func to be added later)
-            continue
-
-        time_data[key] = format_seconds_to_time(seconds)
-
-    print("Session timer ended")
-
+    
+    print("time debug - Session timer thread ended")
 
 # tick-objective endpoint (for overlay)
 @app.route('/api/tick-objective', methods=['POST'])

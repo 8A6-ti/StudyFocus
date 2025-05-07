@@ -1,3 +1,4 @@
+const { ipcRenderer } = window.require('electron');
 // Global variables
 let isStudyMode = true;
 let objectives = [];
@@ -12,7 +13,7 @@ let initialStudyTime = 25 * 60;  // 25 minutes in seconds
 let initialRestTime = 5 * 60;    // 5 minutes in seconds
 
 // Constants
-const REFRESH_INTERVAL = 10000; // check every 10 secs
+const REFRESH_INTERVAL = 10; // check every x secs
 const COUNTDOWN_SECONDS = 5;    // give em 5 secs to switch back
 
 // Show buttons only on hover
@@ -20,16 +21,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const container = document.querySelector('.overlay-container');
   container.addEventListener('mouseenter', () => {
     document.getElementById('actions').style.display = 'flex';
+    ipcRenderer.send('hover-notif-overlay');
   });
   container.addEventListener('mouseleave', () => {
     document.getElementById('actions').style.display = 'none';
+    ipcRenderer.send('notif-overlay');
   });
   
   // Initial data fetch
   fetchData();
   
   // Set up periodic data refresh
-  setInterval(fetchData, REFRESH_INTERVAL);
+  setInterval(fetchData, 1000 * REFRESH_INTERVAL); 
 });
 
 // Fetch data from backend
@@ -44,13 +47,20 @@ function fetchData() {
     });
 }
 
+// Format seconds to HH:MM display
+function formatSecondsToDisplay(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
 // Updates the big timer display
 function updateTimerDisplay() {
   const timeDisplay = document.getElementById('mainTimer');
   if (isStudyMode) {
-    timeDisplay.textContent = timeData.time;
+    timeDisplay.textContent = formatSecondsToDisplay(timeData.time || 0);
   } else {
-    timeDisplay.textContent = timeData.restTime;
+    timeDisplay.textContent = formatSecondsToDisplay(timeData.restTime || 0);
   }
 }
 
@@ -178,11 +188,17 @@ function renderAllowedApps() {
   });
 }
 
-// Switches between study and rest modes
+// switches between study and rest modes
 function switchMode() {
+  // Check rest time before switching to rest mode
+  if (isStudyMode && timeData.restTime == 0) {
+    alert("No rest time remaining!");
+    return;
+  }
+
   isStudyMode = !isStudyMode;
   
-  // Update UI
+  // update ui elements
   updateStatusIndicator();
   updateTimerDisplay();
   updateProgressBar();
@@ -233,6 +249,7 @@ function startAppDetectionCountdown() {
   
   // Show warning banner
   warningBanner.style.display = 'block';
+  // ipcRenderer.send('warn-notif-overlay');
   
   // Change status indicator to warning
   statusIndicator.className = 'status-indicator status-warning';
@@ -252,6 +269,7 @@ function startAppDetectionCountdown() {
     if (secondsLeft <= 0) {
       // Time's up - deduct from rest time
       clearInterval(countdownInterval);
+      // ipcRenderer.send('notif-overlay');
       deductFromRestTime();
     }
   }, 1000);
@@ -276,77 +294,44 @@ function stopAppDetectionCountdown() {
 
 // Parses a time string in format "MM:SS" to seconds
 function parseTimeToSeconds(timeStr) {
-  const parts = timeStr.split(':');
-  if (parts.length === 2) {
-    // Format is MM:SS
-    return (parseInt(parts[0]) * 60) + parseInt(parts[1]);
-  } else if (parts.length === 3) {
-    // Format is HH:MM:SS
-    return (parseInt(parts[0]) * 3600) + (parseInt(parts[1]) * 60) + parseInt(parts[2]);
-  }
-  return 0;
+  return parseInt(timeStr) || 0; // Simple conversion ensuring we get a number
 }
 
 // Formats seconds into a time string (MM:SS)
-function formatSecondsToTime(seconds) {
-  const minutes = Math.floor(Math.max(0, seconds) / 60);
-  const remainingSeconds = Math.max(0, seconds) % 60;
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+function formatSecondsToTime(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
 
-// Calculates progress based on current time remaining
-function calculateTimeProgress() {
-  // Determine if we're in study or rest mode
-  const currentTimeStr = isStudyMode ? timeData.time : timeData.restTime;
-  const currentSeconds = parseTimeToSeconds(currentTimeStr);
-  
-  // Get the appropriate total time
-  const totalSeconds = isStudyMode ? initialStudyTime : initialRestTime;
-  
-  // Calculate the progress percentage
-  let percentage = (currentSeconds / totalSeconds) * 100;
-  
-  // Ensure the percentage is within 0-100 range
-  percentage = Math.max(0, Math.min(100, percentage));
-  
-  return percentage;
-}
-
-// Updates the progress bar
 function updateProgressBar() {
-  const progressPercentage = calculateTimeProgress();
+  // use progress from API data which is already stored in currentProgress
   const progressFill = document.getElementById('progressFill');
-  progressFill.style.width = `${progressPercentage}%`;
+  progressFill.style.width = `${currentProgress}%`;
   
-  // Change color based on progress (green to red as time decreases)
-  if (progressPercentage > 66) {
-    progressFill.style.backgroundColor = "#4CAF50"; // Green
-  } else if (progressPercentage > 33) {
-    progressFill.style.backgroundColor = "#FFA500"; // Orange
+  if (currentProgress > 66) {
+    progressFill.style.backgroundColor = "#4CAF50"; 
+  } else if (currentProgress > 33) {
+    progressFill.style.backgroundColor = "#FFA500";
   } else {
-    progressFill.style.backgroundColor = "#F44336"; // Red
+    progressFill.style.backgroundColor = "#F44336";
+    if (isStudyMode && currentProgress == 0) {
+      endSession();
+    }
   }
 }
 
 function deductFromRestTime() {
-    // First check current app status
     fetch('http://localhost:5000/api/getdata/all')
       .then(response => response.json())
       .then(data => {
-        // Only deduct time if user is still in unallowed app
         if (data.unallowedAppWarning) {
-          // Proceed with time deduction
           fetch('http://localhost:5000/api/deduct-rest-time', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ deductSeconds: 30 })
           })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error('Network response was not ok');
-            }
-            return response.json();
-          })
+          .then(response => response.json())
           .then(data => {
             if (data.time) {
               timeData = data.time;
@@ -354,33 +339,25 @@ function deductFromRestTime() {
               updateProgressBar();
               
               // Switch to study mode if rest time is depleted
-              if (parseTimeToSeconds(timeData.restTime) <= 0 && !isStudyMode) {
+              if (timeData.restTime <= 0 && !isStudyMode) {
                 switchMode();
               }
             }
           })
           .catch(err => {
             console.error('Failed to deduct rest time:', err);
-            // Fallback UI update if backend fails
             if (timeData && timeData.restTime) {
-              const restSeconds = parseTimeToSeconds(timeData.restTime);
-              if (restSeconds > 30) {
-                timeData.restTime = formatSecondsToTime(restSeconds - 30);
-              } else {
-                timeData.restTime = "00:00";
-                if (!isStudyMode) {
-                  switchMode();
-                }
+              timeData.restTime = Math.max(0, timeData.restTime - 30);
+              if (timeData.restTime <= 0 && !isStudyMode) {
+                switchMode();
               }
               updateTimerDisplay();
               updateProgressBar();
             }
           });
         } else {
-          // User has switched to allowed app, stop countdown
           console.log('User returned to allowed app, no time deducted');
         }
-        // Always stop the countdown after checking
         stopAppDetectionCountdown();
       })
       .catch(err => {
@@ -391,31 +368,37 @@ function deductFromRestTime() {
 
 // Checks if the current application is allowed
 function checkCurrentApp(currentAppData) {
-  // No app data provided
+  // skip checks in rest mode
+  if (!isStudyMode) {
+    stopAppDetectionCountdown();
+    return;
+  }
+
+  // no app info found
   if (!currentAppData || !currentAppData.process) {
-    stopAppDetectionCountdown(); // No active app data, so stop any warnings
+    stopAppDetectionCountdown();
     return;
   }
   
-  // Check if the app is in the allowed list
+  // check whitelisted apps list
   const isAllowed = allowedApps.some(app => 
     (app.process && currentAppData.process && app.process.toLowerCase() === currentAppData.process.toLowerCase()) || 
     (app.title && currentAppData.title && currentAppData.title.toLowerCase().includes(app.title.toLowerCase()))
   );
   
-  // Check if it's a system process (these should always be allowed)
+  // windows system processes (always allowed)
   const systemProcesses = [
     "explorer.exe", "SearchUI.exe", "SearchApp.exe", "StartMenuExperienceHost.exe",
-    "ShellExperienceHost.exe", "Taskmgr.exe", "SystemSettings.exe", "RuntimeBroker.exe",
+    "ShellExperienceHost.exe", "Taskmgr.exe", "SystemSettings.exe", "RuntimeBroker.exe", 
     "svchost.exe", "dllhost.exe", "electron.exe"
   ];
   
   const isSystemProcess = systemProcesses.includes(currentAppData.process);
   
-  // Check if the window title contains StudyFocus (our own app)
+  // check if its our own app
   const isStudyFocusApp = currentAppData.title && currentAppData.title.includes("StudyFocus");
   
-  // If the app is allowed, is a system process, or is our own app, it's allowed
+  // allow if whitelisted or system process or our app
   if (isAllowed || isSystemProcess || isStudyFocusApp) {
     stopAppDetectionCountdown();
   } else {
@@ -425,26 +408,32 @@ function checkCurrentApp(currentAppData) {
 
 // Updates the overlay data with information from the backend
 window.updateOverlayData = function(data) {
-  // Update time data
+  // update time data
   if (data && data.time) {
-    timeData = data.time;
+    timeData = data.time; // now receiving seconds directly
     
-    // Store the initial times if this is the first data we've received
+    // stor the initial times
     if (initialStudyTime === 25 * 60 && data.time.time) {
-      initialStudyTime = parseTimeToSeconds(data.time.time);
+      initialStudyTime = data.time.time; // already in seconds
     }
     if (initialRestTime === 5 * 60 && data.time.restTime) {
-      initialRestTime = parseTimeToSeconds(data.time.restTime);
+      initialRestTime = data.time.restTime; // already in seconds
     }
     
     updateTimerDisplay();
   }
 
-  // Update objectives
+  // update progress from API
+  if (data && typeof data.progress === 'number') {
+    currentProgress = data.progress;
+    updateProgressBar();
+  }
+
+  // update objectives
   if (data && data.objectives && data.objectives.obj) {
     objectives = Array.isArray(data.objectives.obj) ? data.objectives.obj : [];
     
-    // Make sure each objective has the correct format
+    // make sure each objective has the correct format
     objectives = objectives.map(obj => {
       if (typeof obj === 'string') {
         return { text: obj, completed: false };
@@ -457,22 +446,22 @@ window.updateOverlayData = function(data) {
     renderObjectives();
   }
   
-  // Update allowed apps
+  // update allowed apps
   if (data && data.apps) {
     allowedApps = data.apps;
     renderAllowedApps();
   }
   
-  // Update mode
+  // update mode
   if (data && data.mode) {
     const newMode = data.mode === "study";
     
-    // Only update if the mode has changed
+    // only update if the mode has changed
     if (isStudyMode !== newMode) {
       isStudyMode = newMode;
       updateStatusIndicator();
       
-      // Update button text
+      // update button text
       const modeButton = document.getElementById('modeButton');
       if (modeButton) {
         modeButton.textContent = isStudyMode ? 'Switch to Rest' : 'Switch to Study';
@@ -480,7 +469,7 @@ window.updateOverlayData = function(data) {
     }
   }
   
-  // Update progress bar
+  // update progress bar
   updateProgressBar();
   
   // Check if current app is allowed

@@ -1,11 +1,32 @@
 * {
-    -webkit-app-region: no-drag;
-  }
+  scrollbar-width: none; 
+  -ms-overflow-style: none;  
+}
+*::-webkit-scrollbar {
+  display: none; 
+}
+
+@font-face {
+  font-family: 'PSBold';
+  src: url('productsansbold.otf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'PS';
+  src: url('productsansregular.otf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+
   html, body {
     margin: 0;
     padding: 0;
     background: transparent;
-    font-family: 'Segoe UI', sans-serif;
+    font-family: PSBold, sans-serif;
+    overflow: hidden;
   }
   
   .overlay-container {
@@ -34,17 +55,20 @@
   }
   
   .buttons {
-    margin-top: 8px;
     display: flex;
     justify-content: space-between;
+    margin: 8px 0;
+    gap: 8px; /* add spacing between buttons */
   }
   
   .button {
+    flex: 1; /* make buttons take equal width */
     background-color: #444;
     border: none;
-    padding: 6px 10px;
+    padding: 8px;
     border-radius: 8px;
     color: white;
+    font-family: PS, sans-serif;
     font-size: 13px;
     cursor: pointer;
     transition: background-color 0.2s ease;
@@ -181,11 +205,12 @@
   
   .warning-banner {
     background-color: rgba(220, 53, 69, 0.8);
-    padding: 8px;
+    padding: 2px;
     margin: 5px 0;
     border-radius: 8px;
     text-align: center;
     display: none;
+    font-size: 12px;
     animation: pulse 1s infinite;
   }
   

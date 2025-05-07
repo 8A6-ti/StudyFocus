@@ -316,14 +316,25 @@ function setupTimeAllocation1View() {
 
   addHoverAnimation(confirmTimeBtn);
   confirmTimeBtn.addEventListener('click', () => {
-    const studyTime = `${studyHourPicker.value}:${studyMinutePicker.value}`;
-    const restTime = `${restHourPicker.value}:${restMinutePicker.value}`;
-    console.log(`study: ${studyTime}`);
-    console.log(`rest: ${restTime}`);
+    // convert HH:MM to seconds
+    const studyHours = parseInt(studyHourPicker.value);
+    const studyMinutes = parseInt(studyMinutePicker.value);
+    const restHours = parseInt(restHourPicker.value);
+    const restMinutes = parseInt(restMinutePicker.value);
+
+    const studyTimeInSeconds = (studyHours * 3600) + (studyMinutes * 60);
+    const restTimeInSeconds = (restHours * 3600) + (restMinutes * 60);
+
+    console.log(`Study time in seconds: ${studyTimeInSeconds}`);
+    console.log(`Rest time in seconds: ${restTimeInSeconds}`);
+
     fetch('http://localhost:5000/api/data/time', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ time: studyTime, restTime })
+      body: JSON.stringify({ 
+        time: studyTimeInSeconds,
+        restTime: restTimeInSeconds 
+      })
     })
       .then(response => response.json())
       .then(data => console.log('res:', data))
