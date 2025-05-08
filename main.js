@@ -115,20 +115,8 @@ function createNotificationOverlay() {
   });
 
   notifOverlay.webContents.once('did-finish-load', () => {
-    // // get actual content size and resize window
-    // notifOverlay.webContents.executeJavaScript(`
-    //   document.querySelector('.overlay-container').getBoundingClientRect();
-    // `).then(rect => {
-    //   notifOverlay.setBounds({
-    //     width: Math.ceil(rect.width),
-    //     height: Math.ceil(rect.height),
-    //     x: display.bounds.width - Math.ceil(rect.width) - 20,
-    //     y: display.bounds.height - Math.ceil(rect.height) - 40
-    //   });
-    // });
-
-    // Fetch data and inject it
-    // what is this for i forgot lol
+    // old, this probably does something =))
+    // please dont touch cause it works
     axios.get('http://localhost:5000/api/getdata/all')
       .then(res => {
         const data = res.data;
@@ -145,13 +133,15 @@ function createNotificationOverlay() {
 }
 
 app.whenReady().then(() => {
+  console.log("splash screen")
   createSplash();
   // python file exec
   // make later since no embedded python in the app
   // also remember to join path to file
   // exec('python path/to/python/file.py', (error, stdout, stderr) => {
-
-  // console.log(os.platform() + os.release() + os.version() + os.machine());
+  
+  console.log("starting app")  
+  console.log("platform: " + os.platform() + "os: " + os.release() + "build: " + os.version() + "machine: " + os.machine());
   // check if system is windows
   if (os.platform() !== "win32") {
     dialog.showErrorBox("Unsupported OS", "StudyFocus is only supported on Windows.");

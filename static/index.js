@@ -277,6 +277,7 @@ function setupTimeAllocationView() {
     addHoverAnimation(allocateObjectivesBtn);
     allocateObjectivesBtn.addEventListener('click', () => {
       // to be added
+      alert('This feature is not yet implemented.');
     });
   }
 }
@@ -473,8 +474,20 @@ function setupAppAllocationView() {
         new Map(data.data.map(app => [app.process, app])).values()
       );
       // app blacklist (windows)
-      const blockedProcesses = ['explorer.exe', 'systemsettings.exe', 'textinputhost.exe'];
-      const blockedTitles = ['nvidia', 'nvidia geforce overlay', 'program manager', 'settings', 'windows input experience', 'studyfocus'];
+      const blockedProcesses = [
+        'explorer.exe', 'systemsettings.exe', 'textinputhost.exe',
+        'AMDRSServ.exe', 'AdobeIPCBroker.exe', 'atieclxx.exe', 
+        'RadeonSoftware.exe', 'nvcontainer.exe', 'NVDisplay.Container.exe',
+        'ApplicationFrameHost.exe', 'WindowsInternal.ComposableShell.Experiences.TextInput.InputApp.exe',
+        'LockApp.exe', 'ShellExperienceHost.exe', 'sihost.exe',
+        'ctfmon.exe', 'dwm.exe', 'TabTip.exe', 'WindowsTerminal.exe'
+      ];
+      const blockedTitles = [
+        'nvidia', 'nvidia geforce overlay', 'program manager', 'settings', 
+        'windows input experience', 'studyfocus', 'amd radeon software',
+        'windows shell experience host', 'windows terminal', 'task view',
+        'notification center', 'action center', 'search', 'start'
+      ];
 
       const filteredApps = uniqueApps.filter(app => {
         const proc = app.process?.toLowerCase();
@@ -548,7 +561,7 @@ function setupSummaryView() {
     .catch(err => console.error('Failed to fetch summary data:', err));
 
   startsesh.addEventListener('click', () => {
-    // Start the session before creating overlay
+    // start session
     fetch('http://localhost:5000/api/start-session', {
       method: 'POST'
     })
