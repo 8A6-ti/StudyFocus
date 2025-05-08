@@ -114,6 +114,10 @@ function createNotificationOverlay() {
     notifOverlay.setBounds({ width: 325, height: 200 });
   });
 
+  ipcMain.on('notif-overlay-close', () => {
+    app.quit();
+  });
+
   notifOverlay.webContents.once('did-finish-load', () => {
     // old, this probably does something =))
     // please dont touch cause it works
@@ -141,7 +145,7 @@ app.whenReady().then(() => {
   // exec('python path/to/python/file.py', (error, stdout, stderr) => {
   
   console.log("starting app")  
-  console.log("platform: " + os.platform() + "os: " + os.release() + "build: " + os.version() + "machine: " + os.machine());
+  console.log("platform: " + os.platform() + " build: " + os.release() + " os name: " + os.version() + " machine: " + os.machine());
   // check if system is windows
   if (os.platform() !== "win32") {
     dialog.showErrorBox("Unsupported OS", "StudyFocus is only supported on Windows.");

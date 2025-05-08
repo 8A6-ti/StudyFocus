@@ -17,6 +17,7 @@ from PIL import Image
 import os
 import json
 import threading
+import webbrowser
 
 # config
 DEV_MODE = False # false on release
@@ -269,6 +270,8 @@ def end_session():
         print(f"Session statistics saved to {filename}")
     except Exception as e:
         print(f"Failed to save session statistics: {e}")
+
+    webbrowser.open(f'http://localhost:{PORT}/session-summary')
     
     return jsonify({
         "status": "success",
@@ -721,6 +724,37 @@ def tick_objective():
 @app.route('/end-session', methods=['POST'])
 def end_session_legacy():
     return end_session()
+
+@app.route('/session-summary')
+def session_summary_page():
+    return send_from_directory('static', 'session-summary.html')
+
+@app.route('/api/session-summary')
+def get_session_summary():
+    try:
+        # Get the latest session file
+        if not os.path.exists('stats'):
+            return jsonify({"error": "No sessions found"}), 404
+            
+        files = os.listdir('stats')
+        if not files:
+            return jsonify({"error": "No sessions found"}), 404
+            
+        # Get most recent file
+        latest_file = max(
+            [f for f in files if f.startswith('session_')],
+            key=lambda x: os.path.getctime(os.path.join('stats', x))
+        )
+        
+        # Read the session data
+        with open(os.path.join('stats', latest_file), 'r') as f:
+            session_data = json.load(f)
+            
+        return jsonify(session_data)
+        
+    except Exception as e:
+        print(f"Error reading session summary: {e}")
+        return jsonify({"error": "Failed to load session summary"}), 500
 
 # run flask
 if __name__ == '__main__':

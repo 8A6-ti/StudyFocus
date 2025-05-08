@@ -237,12 +237,17 @@ function endSession() {
       if (window.electron) {
         window.electron.closeWindow();
       }
+      ipcRenderer.send('notif-overlay-close');
     }).catch(err => console.error('Failed to end session:', err));
   }
 }
 
 // Starts the warning countdown when using unauthorized apps
 function startAppDetectionCountdown() {
+  if (!isStudyMode) {
+    stopAppDetectionCountdown();
+    return;
+  }
   const warningBanner = document.getElementById('warningBanner');
   const countdownElement = document.getElementById('countdown');
   const statusIndicator = document.querySelector('.status-indicator');
@@ -320,7 +325,11 @@ function updateProgressBar() {
         if (window.electron) {
           window.electron.closeWindow();
         }
+        ipcRenderer.send('notif-overlay-close');
       }).catch(err => console.error('Failed to end session:', err));
+    }
+    if (!isStudyMode && currentProgress == 100) {
+      switchMode();
     }
   }
 }

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>StudyFocus Session Summary</title>
+    <link href="./styles.css" rel="stylesheet">
+    <style>
+        .summary-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: rgba(40, 40, 40, 0.95);
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-card {
+            background: rgba(60, 60, 60, 0.5);
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.02);
+        }
+
+        .objectives-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .objective-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(80, 80, 80, 0.3);
+            border-radius: 8px;
+        }
+
+        .objective-completed {
+            color: #4CAF50;
+        }
+
+        .objective-incomplete {
+            color: #ff6b6b;
+        }
+
+        .completion-time {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .apps-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .app-item {
+            background: rgba(60, 60, 60, 0.5);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="summary-container">
+        <h1 id="title">StudyFocus</h1>
+        <h2 id="desc">Session Summary</h1>
+        <h2 id="desc1" class="date"></h2>
+
+        <div class="stat-card">
+            <h3>Time Statistics</h3>
+            <p>Total Duration: <span id="total-duration"></span></p>
+            <p>Elapsed Study Time: <span id="study-time"></span></p>
+            <p>Elapsed Rest Time: <span id="rest-time"></span></p>
+        </div>
+
+        <div class="stat-card">
+            <h3>Objectives Progress</h3>
+            <p>Completed: <span id="objectives-completed"></span></p>
+            <p>Total: <span id="objectives-total"></span></p>
+            <div class="objectives-list" id="objectives-list"></div>
+        </div>
+
+        <div class="stat-card">
+            <h3>Allowed Applications</h3>
+            <div class="apps-list" id="apps-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // format time to hh:mm:ss
+        function formatSeconds(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            return `${hours}h ${minutes}m ${secs}s`;
+        }
+
+        // get session data
+        fetch('/api/session-summary')
+            .then(response => response.json())
+            .then(data => {
+                // update date
+                document.querySelector('.date').textContent = data.date;
+
+                // set time stats
+                document.getElementById('total-duration').textContent = data.duration_str;
+                document.getElementById('study-time').textContent = formatSeconds(data.study_time);
+                document.getElementById('rest-time').textContent = formatSeconds(data.rest_time);
+
+                // set objectives stats
+                document.getElementById('objectives-completed').textContent = data.objectives_completed;
+                document.getElementById('objectives-total').textContent = data.objectives_total;
+
+                // render objectives
+                const objectivesList = document.getElementById('objectives-list');
+                data.objectives_details.forEach(obj => {
+                    const item = document.createElement('div');
+                    item.className = `objective-item ${obj.completed ? 'objective-completed' : 'objective-incomplete'}`;
+                    
+                    const status = document.createElement('span');
+                    status.textContent = obj.completed ? '✓' : '○';
+                    
+                    const text = document.createElement('span');
+                    text.textContent = obj.text;
+                    
+                    item.appendChild(status);
+                    item.appendChild(text);
+
+                    if (obj.completedAt) {
+                        const time = document.createElement('span');
+                        time.className = 'completion-time';
+                        time.textContent = new Date(obj.completedAt).toLocaleTimeString();
+                        item.appendChild(time);
+                    }
+
+                    objectivesList.appendChild(item);
+                });
+                
+                // render allowed apps
+                const appsList = document.getElementById('apps-list');
+                if (data.allowed_apps && data.allowed_apps.length > 0) {
+                    data.allowed_apps.forEach(app => {
+                        const appItem = document.createElement('div');
+                        appItem.className = 'app-item';
+                        appItem.textContent = app.title || app.process;
+                        appsList.appendChild(appItem);
+                    });
+                } else {
+                    appsList.innerHTML = '<div class="line">No apps were whitelisted for this session.</div>';
+                }
+            })
+            .catch(error => {
+                console.error('failed to load summary:', error);
+                document.querySelector('.summary-container').innerHTML = 
+                    '<h1>Error loading session summary</h1><p>Please try again later.</p>';
+            });
+    </script>
+</body>
+</html>
