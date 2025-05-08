@@ -6,10 +6,8 @@ Made for the VinSTEAM Innovation competition, this project aims to help users fo
 ## How to run (Latest commits)
 Download or clone the repository then install all requirements from the Python main.py file and install Electron using NPM. Latest commits usually don't have the Python system controller built-in into the Electron app so run both ```npm start``` and ```py main.py```
 ## Major todos
-- recode timing system its completely broken 😭
 - Vietnamese language support (multi language support in general)
 - Advanced time allocation
-- Finish menu during study mode
 - Polish and clean up UI
 - Website for handling users, session history (planned)
 - Point system like Duolingo (planned)
