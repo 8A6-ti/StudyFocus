@@ -4,6 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const axios = require('axios');
 const iconPath = path.join(__dirname, "build", "icon.png");
+const appPath = path.join(process.resourcesPath, 'studyfocus.exe');
 
 let splashWindow;
 let mainWindow;
@@ -137,12 +138,11 @@ function createNotificationOverlay() {
 }
 
 app.whenReady().then(() => {
-  console.log("splash screen")
+  console.log("splash screen");
+  console.log(process.resourcesPath);
   createSplash();
   // python file exec
-  // make later since no embedded python in the app
-  // also remember to join path to file
-  // exec('python path/to/python/file.py', (error, stdout, stderr) => {
+  // spawn(path.join(process.resourcesPath, 'studyfocus.exe'), [], { detached: true, stdio: 'ignore' }).unref();
   
   console.log("starting app")  
   console.log("platform: " + os.platform() + " build: " + os.release() + " os name: " + os.version() + " machine: " + os.machine());
