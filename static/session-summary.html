@@ -146,13 +146,17 @@
                     objectivesList.appendChild(item);
                 });
                 
-                // render allowed apps
+                // render allowed apps with both title and process name if available
                 const appsList = document.getElementById('apps-list');
                 if (data.allowed_apps && data.allowed_apps.length > 0) {
                     data.allowed_apps.forEach(app => {
                         const appItem = document.createElement('div');
                         appItem.className = 'app-item';
-                        appItem.textContent = app.title || app.process;
+                        if (app.title && app.process) {
+                            appItem.textContent = `${app.title} (${app.process})`;
+                        } else {
+                            appItem.textContent = app.title || app.process || 'Unknown app';
+                        }
                         appsList.appendChild(appItem);
                     });
                 } else {
@@ -160,7 +164,7 @@
                 }
             })
             .catch(error => {
-                console.error('failed to load summary:', error);
+                console.error('Failed to load summary:', error);
                 document.querySelector('.summary-container').innerHTML = 
                     '<h1>Error loading session summary</h1><p>Please try again later.</p>';
             });

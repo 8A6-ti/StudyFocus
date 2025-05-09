@@ -402,8 +402,8 @@ function checkCurrentApp(currentAppData) {
   // windows system processes (always allowed)
   const systemProcesses = [
     "explorer.exe", "SearchUI.exe", "SearchApp.exe", "StartMenuExperienceHost.exe",
-    "ShellExperienceHost.exe", "Taskmgr.exe", "SystemSettings.exe", "RuntimeBroker.exe", 
-    "svchost.exe", "dllhost.exe", "electron.exe"
+    "ShellExperienceHost.exe", "SystemSettings.exe", "RuntimeBroker.exe", 
+    "svchost.exe", "dllhost.exe"
   ];
   
   const isSystemProcess = systemProcesses.includes(currentAppData.process);

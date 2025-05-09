@@ -255,7 +255,8 @@ def end_session():
             "rest_time": int(rest_elapsed_time), 
             "objectives_total": len(objectives_data['obj']) if objectives_data and 'obj' in objectives_data else 0,
             "objectives_completed": completed_objectives,
-            "objectives_details": objectives_data['obj'] if objectives_data and 'obj' in objectives_data else []
+            "objectives_details": objectives_data['obj'] if objectives_data and 'obj' in objectives_data else [],
+            "allowed_apps": whitelisted_apps if whitelisted_apps else []
         }
         
         # create stats dir on system
