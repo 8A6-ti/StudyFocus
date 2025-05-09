@@ -7,10 +7,10 @@ let currentProgress = 100;
 let timeData = { time: "25:00", restTime: "5:00" };
 let countdownInterval = null;
 let secondsLeft = 5;
-let studyTotalSeconds = 25 * 60; // 25 minutes in seconds
-let restTotalSeconds = 5 * 60;   // 5 minutes in seconds
-let initialStudyTime = 25 * 60;  // 25 minutes in seconds
-let initialRestTime = 5 * 60;    // 5 minutes in seconds
+let studyTotalSeconds = 25 * 60; // example thing
+let restTotalSeconds = 5 * 60;   
+let initialStudyTime = 25 * 60;  
+let initialRestTime = 5 * 60;    
 
 // Constants
 const REFRESH_INTERVAL = 10; // check every x secs
