@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const { exec } = require('child_process');
+const { spawn } = require('child_process');
 const os = require('node:os');
 const path = require('node:path');
 const axios = require('axios');
@@ -134,15 +134,15 @@ function createNotificationOverlay() {
       .catch(err => {
         console.error("Failed to fetch overlay data:", err.message);
       });
-  });
+    });
 }
 
 app.whenReady().then(() => {
   console.log("splash screen");
   console.log(process.resourcesPath);
+  spawn(path.join(process.resourcesPath, 'studyfocussystemcontroller.exe'), [], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
   createSplash();
   // python file exec
-  // spawn(path.join(process.resourcesPath, 'studyfocus.exe'), [], { detached: true, stdio: 'ignore' }).unref();
   
   console.log("starting app")  
   console.log("platform: " + os.platform() + " build: " + os.release() + " os name: " + os.version() + " machine: " + os.machine());
@@ -163,5 +163,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', function () {
+  axios.get('http://localhost:5000/api/byebye');
   if (process.platform !== 'darwin') app.quit();
 });
