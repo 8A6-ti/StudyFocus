@@ -99,12 +99,12 @@ def format_seconds_to_time(seconds):
 # index
 @app.route('/')
 def index():
-    return send_from_directory('static', 'index.html')
+    return send_from_directory(app.static_folder, 'index.html')
 
 # other static files
 @app.route('/<path:filename>')
 def serve_static(filename):
-    return send_from_directory('static', filename)
+    return send_from_directory(app.static_folder, filename)
 
 # recieve data (obj)
 @app.route('/api/data', methods=['POST'])
