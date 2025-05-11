@@ -756,6 +756,10 @@ def get_session_summary():
     except Exception as e:
         print(f"Error reading session summary: {e}")
         return jsonify({"error": "Failed to load session summary"}), 500
+    
+@app.route('/api/byebye')
+def app_close():
+    quit()
 
 # run flask
 if __name__ == '__main__':
