@@ -1,0 +1,24 @@
+{
+  "name": "studyfocus",
+  "productName": "StudyFocus",
+  "description": "StudyFocus Frontend",
+  "keywords": [],
+  "main": "./main.js",
+  "version": "release",
+  "author": "8A6 ti team",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.1.5"
+  },
+  "build": {
+    "files": [
+      "build/*"
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "node-notifier": "^10.0.1"
+  }
+}
