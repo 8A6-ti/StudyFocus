@@ -12,4 +12,4 @@ Download or clone the repository then install all requirements from the Python m
 - Website for handling users, session history (planned)
 - Point system like Duolingo (planned)
 - Unix (Linux and MacOS) support (We don't have Macs, lets hope Unix support in general works for both)
-# Project actively in development, expect some bugs and unfinished code, UX
+
